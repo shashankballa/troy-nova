@@ -54,7 +54,7 @@ if(TROY_TEST)
         target_sources(troytest PRIVATE serialize_zstd.cu)
     endif()
 
-    target_link_libraries(troytest gtest gtest_main troy)
+    target_link_libraries(troytest gtest gtest_main troy_static)
 
     include(GoogleTest)
     gtest_discover_tests(troytest)
@@ -72,13 +72,13 @@ if(TROY_BENCH)
         test_adv.cu
         test_multithread.cu
     )
-    target_link_libraries(troybench troy)
+    target_link_libraries(troybench troy_static)
 
     add_executable(bench_ntt)
     target_sources(bench_ntt PRIVATE 
         bench/ntt.cu
     )
-    target_link_libraries(bench_ntt troy)
+    target_link_libraries(bench_ntt troy_static)
 
     add_executable(bench_matmul)
     target_sources(bench_matmul PRIVATE 
@@ -87,7 +87,7 @@ if(TROY_BENCH)
         test_adv.cu
         test_multithread.cu
     )
-    target_link_libraries(bench_matmul troy)
+    target_link_libraries(bench_matmul troy_static)
 
     add_executable(bench_conv2d)
     target_sources(bench_conv2d PRIVATE 
@@ -95,7 +95,7 @@ if(TROY_BENCH)
         bench/conv2d.cu
         test_adv.cu
     )
-    target_link_libraries(bench_conv2d troy)
+    target_link_libraries(bench_conv2d troy_static)
 
 endif()
 
@@ -103,4 +103,4 @@ endif()
 # target_sources(custom3 PRIVATE 
 # custom3.cu
 # )
-# target_link_libraries(custom3 troy)
+# target_link_libraries(custom3 troy_static)

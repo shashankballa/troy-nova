@@ -10,3 +10,5 @@ gather_code.*
 .clangd
 test/custom*.cu
 test/main.cu
+
+*.log

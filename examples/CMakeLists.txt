@@ -20,4 +20,4 @@ target_sources(troyexamples PRIVATE
     99_quickstart.cu
 )
 
-target_link_libraries(troyexamples PRIVATE troy)
+target_link_libraries(troyexamples PRIVATE troy_static)
