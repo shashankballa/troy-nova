@@ -8,8 +8,6 @@ BUILD_DIR=$WORK_DIR/build
 N_JOBS=64
 BUILD_MODE=Release
 
-
-
 mkdir -p $BUILD_DIR
 
 if [[ "$*" == *"-clean"* ]]; then

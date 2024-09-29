@@ -20,6 +20,7 @@ namespace troy { namespace linear {
         void encode_weights(
             const E& encoder, const Encryptor* encryptor, const T* weights, 
             bool for_cipher, Plain2d* out_plain, Cipher2d* out_cipher
+            , std::optional<Evaluator*> evaluator = std::nullopt
         ) const;
         
         template <typename E, typename T>
@@ -90,7 +91,7 @@ namespace troy { namespace linear {
         template <typename T>
         Cipher2d encrypt_inputs_ring2k(const Encryptor& encryptor, const PolynomialEncoderRing2k<T>& encoder, const T* inputs, std::optional<ParmsID> parms_id) const;
 
-        Cipher2d conv2d(const Evaluator& evaluator, const Cipher2d& a, const Plain2d& w) const;
+        Cipher2d conv2d(const Evaluator& evaluator, const Cipher2d& a, const Plain2d& w, bool conv_ntt = false) const;
         Cipher2d conv2d_cipher(const Evaluator& evaluator, const Cipher2d& a, const Cipher2d& w) const;
         Cipher2d conv2d_reverse(const Evaluator& evaluator, const Plain2d& a, const Cipher2d& w) const;
 

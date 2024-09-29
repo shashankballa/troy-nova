@@ -44,6 +44,8 @@ namespace bench::conv2d {
         bool use_zstd = false;
 
         bool no_check_correctness = false;
+
+        bool conv_ntt = false;
         
         Arguments(int argc, char** argv) {
             ArgumentParser parser(argc, argv);
@@ -111,12 +113,14 @@ namespace bench::conv2d {
                 scheme_ckks = false;
                 scheme_bgv = false;
             }
+
+            conv_ntt = parser.get_bool_store_true("-ntt").value_or(false);
         }
 
         
         static void print_help() {
-            std::cout << "Usage: bench_matmul [options]" << std::endl;
-            std::cout << "Run benchmark for HE matmul" << std::endl;
+            std::cout << "Usage: bench_conv2d [options]" << std::endl;
+            std::cout << "Run benchmark for HE conv2d" << std::endl;
             std::cout << std::endl;
             std::cout << "Options:" << std::endl;
             std::cout << std::endl;
@@ -203,6 +207,7 @@ namespace bench::conv2d {
                 std::cout << "  tolerance           = " << tolerance << std::endl;
             }
 
+            std::cout << "  conv_ntt            = " << bool_to_string(conv_ntt) << std::endl;
         }
 
     };
@@ -457,9 +462,9 @@ namespace bench::conv2d {
                 x_encrypted = Cipher2d::load_new(x_serialized_stream, context.context());
                 timer.tock(timer_single_handle);
                 
-                timer_single_handle = timer.register_timer("Matmul");
+                timer_single_handle = timer.register_timer("Conv2d");
                 timer.tick(timer_single_handle);
-                Cipher2d y_encrypted = helper.conv2d(evaluator, x_encrypted, w_encoded);
+                Cipher2d y_encrypted = helper.conv2d(evaluator, x_encrypted, w_encoded, args.conv_ntt);
                 timer.tock(timer_single_handle);
                 
                 if (mod_switch_down_levels > 0) {

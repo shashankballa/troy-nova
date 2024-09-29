@@ -91,6 +91,7 @@ namespace troy { namespace linear {
     void Conv2dHelper::encode_weights(
         const E& encoder, const Encryptor* encryptor, const T* weights, 
         bool for_cipher, Plain2d* out_plain, Cipher2d* out_cipher
+        , std::optional<Evaluator*> evaluator
     ) const {
         size_t block_size = image_height_block * image_width_block;
         if (out_plain) {
@@ -146,6 +147,7 @@ namespace troy { namespace linear {
         template void Conv2dHelper::encode_weights<adapter, dtype>( \
             const adapter& encoder, const Encryptor* encryptor, const dtype* weights, \
             bool for_cipher, Plain2d* out_plain, Cipher2d* out_cipher \
+            , std::optional<Evaluator*> evaluator \
         ) const;
     D_IMPL_ALL
     #undef D_IMPL
@@ -336,25 +338,75 @@ namespace troy { namespace linear {
     D_IMPL_ALL
     #undef D_IMPL
 
-    Cipher2d Conv2dHelper::conv2d(const Evaluator& evaluator, const Cipher2d& a, const Plain2d& encoded_weights) const {
+    Cipher2d Conv2dHelper::conv2d(const Evaluator& evaluator, const Cipher2d& a, const Plain2d& encoded_weights, bool conv_ntt) const {
         size_t total_batch_size = get_total_batch_size();
-        Cipher2d ret; ret.data().reserve(total_batch_size);
-        for (size_t b = 0; b < total_batch_size; b++) {
-            size_t groupLen = ceil_div(output_channels, output_channel_block);
-            std::vector<Ciphertext> group; group.reserve(groupLen);
-            for (size_t oc = 0; oc < groupLen; oc++) {
-                Ciphertext cipher;
-                for (size_t i = 0; i < a[b].size(); i++) {
-                    Ciphertext prod;
-                    evaluator.multiply_plain(a[b][i], encoded_weights[oc][i], prod, pool);
-                    if (i==0) cipher = std::move(prod);
-                    else evaluator.add_inplace(cipher, prod, pool);
+        SchemeType scheme = evaluator.context()->key_context_data().value()->parms().scheme();
+
+        if(conv_ntt && (scheme == SchemeType::BFV)) {
+
+            // Initialize the nttoutput
+            Cipher2d ret_ntt; ret_ntt.data().reserve(total_batch_size);
+
+            // input to ntt
+            Cipher2d a_ntt = a;
+            for(size_t d0 = 0; d0 < a_ntt.data().size(); d0++) {
+                for(size_t d1 = 0; d1 < a_ntt.data()[d0].size(); d1++) {
+                    evaluator.transform_to_ntt_inplace(a_ntt.data()[d0][d1]);
                 }
-                group.push_back(std::move(cipher));
             }
-            ret.data().push_back(std::move(group));
+
+            // weights to ntt
+            Plain2d encoded_weights_ntt = encoded_weights;
+            for(size_t d0 = 0; d0 < encoded_weights_ntt.data().size(); d0++) {
+                for(size_t d1 = 0; d1 < encoded_weights_ntt.data()[d0].size(); d1++) {
+                    evaluator.transform_plain_to_ntt_inplace(encoded_weights_ntt.data()[d0][d1], a_ntt[0][0].parms_id(), pool);
+                }
+            }
+
+            for (size_t b = 0; b < total_batch_size; b++) {
+                size_t groupLen = ceil_div(output_channels, output_channel_block);
+                std::vector<Ciphertext> group; group.reserve(groupLen);
+                for (size_t oc = 0; oc < groupLen; oc++) {
+                    Ciphertext cipher;
+                    for (size_t i = 0; i < a[b].size(); i++) {
+                        Ciphertext prod;
+                        evaluator.multiply_plain(a_ntt[b][i], encoded_weights_ntt[oc][i], prod, pool);
+                        if (i==0) cipher = std::move(prod);
+                        else evaluator.add_inplace(cipher, prod, pool);
+                    }
+                    group.push_back(std::move(cipher));
+                }
+                ret_ntt.data().push_back(std::move(group));
+            }
+
+            // output from ntt
+            for(size_t d0 = 0; d0 < ret_ntt.data().size(); d0++) {
+                for(size_t d1 = 0; d1 < ret_ntt.data()[d0].size(); d1++) {
+                    evaluator.transform_from_ntt_inplace(ret_ntt.data()[d0][d1]);
+                }
+            }
+            
+            return ret_ntt;
+            
+        } else {
+            Cipher2d ret; ret.data().reserve(total_batch_size);
+            for (size_t b = 0; b < total_batch_size; b++) {
+                size_t groupLen = ceil_div(output_channels, output_channel_block);
+                std::vector<Ciphertext> group; group.reserve(groupLen);
+                for (size_t oc = 0; oc < groupLen; oc++) {
+                    Ciphertext cipher;
+                    for (size_t i = 0; i < a[b].size(); i++) {
+                        Ciphertext prod;
+                        evaluator.multiply_plain(a[b][i], encoded_weights[oc][i], prod, pool);
+                        if (i==0) cipher = std::move(prod);
+                        else evaluator.add_inplace(cipher, prod, pool);
+                    }
+                    group.push_back(std::move(cipher));
+                }
+                ret.data().push_back(std::move(group));
+            }
+            return ret;
         }
-        return ret;
     }
 
     Cipher2d Conv2dHelper::conv2d_cipher(const Evaluator& evaluator, const Cipher2d& a, const Cipher2d& encoded_weights) const {
