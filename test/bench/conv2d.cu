@@ -114,7 +114,7 @@ namespace bench::conv2d {
                 scheme_bgv = false;
             }
 
-            conv_ntt = parser.get_bool_store_true("-ntt").value_or(false);
+            conv_ntt = parser.get_bool_store_true("--ntt").value_or(false);
         }
 
         
@@ -348,19 +348,26 @@ namespace bench::conv2d {
             TimerOnce timer;
             Plain2d w_encoded;
             if (encoder.is_batch()) {
+                std::cout << "Encoding weights with batch encoder using uint64_t" << std::endl;
                 w_encoded = helper.encode_weights_uint64s(encoder.batch(), w.integers().data());
             } else if (encoder.is_ckks()) {
+                std::cout << "Encoding weights with ckks encoder using doubles" << std::endl;
                 w_encoded = helper.encode_weights_doubles(encoder.ckks(), w.doubles().data(), std::nullopt, context.scale());
             } else if (encoder.is_ring32()) {
+                std::cout << "Encoding weights with ring2k encoder using uint32_t" << std::endl;
                 w_encoded = helper.encode_weights_ring2k<uint32_t>(encoder.poly32(), w.uint32s().data(), std::nullopt, false);
             } else if (encoder.is_ring64()) {
-                w_encoded = helper.encode_weights_ring2k<uint64_t>(encoder.poly64(), w.uint64s().data(), std::nullopt, false);
+                std::cout << "Encoding weights with ring2k encoder using uint64_t" << std::endl;
+                w_encoded = helper.encode_weights_ring2k<uint64_t>(encoder.poly64(), w.uint64s().data(), std::nullopt, false, evaluator, args.conv_ntt);
             } else if (encoder.is_ring128()) {
+                std::cout << "Encoding weights with ring2k encoder using uint128_t" << std::endl;
                 w_encoded = helper.encode_weights_ring2k<uint128_t>(encoder.poly128(), w.uint128s().data(), std::nullopt, false);
             } else {
                 throw std::runtime_error("Unsupported encoder");
             }
-            timer.finish("Ecd w");
+            timer.finish("Conv2d-offline");
+
+            std::cout << "Weights dimensions: " << w_encoded.data().size() << " x " << w_encoded.data()[0].size() << std::endl;
 
             size_t mod_switch_down_levels = args.mod_switch_down_levels;
 
@@ -409,6 +416,8 @@ namespace bench::conv2d {
                     throw std::runtime_error("Unsupported encoder");
                 }
                 timer.tock(timer_single_handle);
+
+                std::cout << "Inputs dimensions : " << x_encoded.data().size() << " x " << x_encoded.data()[0].size() << std::endl;
 
                 timer_single_handle = timer.register_timer("Enc [x]");
                 timer.tick(timer_single_handle);
@@ -492,7 +501,7 @@ namespace bench::conv2d {
                 }
 
                 if (last_rep) {
-                    block_timer.finish("Server-Matmul");
+                    block_timer.finish("Conv2d-online");
                     timer.print();
                 }
                 timer.clear();

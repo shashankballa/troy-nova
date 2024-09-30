@@ -20,7 +20,13 @@ namespace troy { namespace linear {
         void encode_weights(
             const E& encoder, const Encryptor* encryptor, const T* weights, 
             bool for_cipher, Plain2d* out_plain, Cipher2d* out_cipher
-            , std::optional<Evaluator*> evaluator = std::nullopt
+        ) const;
+
+        template <typename E, typename T>
+        void encode_weights(
+            const E& encoder, const Encryptor* encryptor, const T* weights, 
+            bool for_cipher, Plain2d* out_plain, Cipher2d* out_cipher,
+            const Evaluator& evaluator, bool conv_ntt = false
         ) const;
         
         template <typename E, typename T>
@@ -75,6 +81,9 @@ namespace troy { namespace linear {
         Plain2d encode_weights_doubles(const CKKSEncoder& encoder, const double* weights, std::optional<ParmsID> parms_id, double scale) const;
         template <typename T>
         Plain2d encode_weights_ring2k(const PolynomialEncoderRing2k<T>& encoder, const T* weights, std::optional<ParmsID> parms_id, bool for_cipher) const;
+        template <typename T>
+        Plain2d encode_weights_ring2k(const PolynomialEncoderRing2k<T>& encoder, const T* weights, std::optional<ParmsID> parms_id, bool for_cipher
+            , const Evaluator& evaluator, bool conv_ntt = false) const;
 
         Cipher2d encrypt_weights_uint64s(const Encryptor& encryptor, const BatchEncoder& encoder, const uint64_t* weights) const;
         Cipher2d encrypt_weights_doubles(const Encryptor& encryptor, const CKKSEncoder& encoder, const double* weights, std::optional<ParmsID> parms_id, double scale) const;
