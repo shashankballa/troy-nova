@@ -170,3 +170,38 @@ if(TROY_EXAMPLES)
 endif()
 
 add_subdirectory(test)
+
+# Installation commands
+install(TARGETS troy
+        EXPORT TroyTargets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin)
+
+install(DIRECTORY src/
+        DESTINATION include/troy)
+
+# Generate and install TroyConfig.cmake
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/TroyConfigVersion.cmake"
+  VERSION 1.0
+  COMPATIBILITY AnyNewerVersion
+)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/TroyConfigVersion.cmake"
+  DESTINATION lib/cmake/Troy
+)
+
+install(EXPORT TroyTargets
+  FILE TroyTargets.cmake
+  NAMESPACE Troy::
+  DESTINATION lib/cmake/Troy
+)
+
+configure_file(TroyConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/TroyConfig.cmake" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/TroyConfig.cmake"
+  DESTINATION lib/cmake/Troy
+)
