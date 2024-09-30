@@ -17,10 +17,13 @@ if [[ $* == *"-ntt"* ]]; then
     LOG_FNAME="${LOG_FNAME}-ntt"
 fi
 
-
 if [[ "$*" == *"-l="* ]]; then
     LOGNUM=$(echo $* | grep -o -P '(?<=-l=)\d+' | head -1)
     LOG_FNAME="$LOGNUM-$LOG_FNAME"
+fi
+
+if [[ "$*" == *"-logdir="* ]]; then
+    LOG_DIR=$(echo $* | grep -o -P '(?<=-logdir=)[^ ]+' | head -1)
 fi
 
 LOG_FNAME="${LOG_FNAME}.log"
