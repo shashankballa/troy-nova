@@ -25,6 +25,7 @@ namespace bench::conv2d {
         bool scheme_bfv = false;
         bool scheme_ckks = false;
         bool scheme_bgv = false;
+        bool verbose = false;
 
         size_t repeat;
 
@@ -115,6 +116,8 @@ namespace bench::conv2d {
             }
 
             conv_ntt = parser.get_bool_store_true("--ntt").value_or(false);
+
+            verbose = parser.get_bool_store_true("-v").value_or(parser.get_bool_store_true("--verbose").value_or(false));
         }
 
         
@@ -348,19 +351,19 @@ namespace bench::conv2d {
             TimerOnce timer;
             Plain2d w_encoded;
             if (encoder.is_batch()) {
-                std::cout << "Encoding weights with batch encoder using uint64_t" << std::endl;
+                if (args.verbose) std::cout << "Encoding weights with batch encoder using uint64_t" << std::endl;
                 w_encoded = helper.encode_weights_uint64s(encoder.batch(), w.integers().data());
             } else if (encoder.is_ckks()) {
-                std::cout << "Encoding weights with ckks encoder using doubles" << std::endl;
+                if (args.verbose) std::cout << "Encoding weights with ckks encoder using doubles" << std::endl;
                 w_encoded = helper.encode_weights_doubles(encoder.ckks(), w.doubles().data(), std::nullopt, context.scale());
             } else if (encoder.is_ring32()) {
-                std::cout << "Encoding weights with ring2k encoder using uint32_t" << std::endl;
+                if (args.verbose) std::cout << "Encoding weights with ring2k encoder using uint32_t" << std::endl;
                 w_encoded = helper.encode_weights_ring2k<uint32_t>(encoder.poly32(), w.uint32s().data(), std::nullopt, false);
             } else if (encoder.is_ring64()) {
-                std::cout << "Encoding weights with ring2k encoder using uint64_t" << std::endl;
+                if (args.verbose) std::cout << "Encoding weights with ring2k encoder using uint64_t" << std::endl;
                 w_encoded = helper.encode_weights_ring2k<uint64_t>(encoder.poly64(), w.uint64s().data(), std::nullopt, false, evaluator, args.conv_ntt);
             } else if (encoder.is_ring128()) {
-                std::cout << "Encoding weights with ring2k encoder using uint128_t" << std::endl;
+                if (args.verbose) std::cout << "Encoding weights with ring2k encoder using uint128_t" << std::endl;
                 w_encoded = helper.encode_weights_ring2k<uint128_t>(encoder.poly128(), w.uint128s().data(), std::nullopt, false);
             } else {
                 throw std::runtime_error("Unsupported encoder");
@@ -382,19 +385,8 @@ namespace bench::conv2d {
 
             bool success = false;
 
-            Timer total_timer;
-            size_t total_timer_handle = total_timer.register_timer("Time cost");
-
             for (size_t rep = 0; rep < args.repeat; rep++) {
                 bool last_rep = rep == args.repeat - 1;
-                total_timer.tick(total_timer_handle);
-
-                Timer total_timer_once; 
-                size_t total_timer_once_handle = 0;
-                if (args.repeat > 1) {
-                    total_timer_once_handle = total_timer_once.register_timer(std::string("Time cost #") + std::to_string(rep + 1));
-                    total_timer_once.tick(total_timer_once_handle);
-                }
 
                 Timer timer; timer.tab(1);
                 TimerOnce block_timer;
@@ -545,16 +537,12 @@ namespace bench::conv2d {
                 }
                 timer.clear();
 
-                total_timer.tock(total_timer_handle);
-                if (args.repeat > 1) {
-                    total_timer_once.tock(total_timer_once_handle);
-                    total_timer_once.print();
-                }
-
                 if (rep == args.repeat - 1) {
-                    std::cout << "Communication cost:\n";
-                    std::cout << "  [x] = " << x_serialized_size << " bytes" << std::endl;
-                    std::cout << "  [y] = " << y_serialized_size << " bytes" << std::endl;
+                    if(args.verbose){
+                        std::cout << "Communication cost:\n";
+                        std::cout << "  [x] = " << x_serialized_size << " bytes" << std::endl;
+                        std::cout << "  [y] = " << y_serialized_size << " bytes" << std::endl;
+                    }
 
                     if (args.no_check_correctness) {
                         success = true;
@@ -564,8 +552,6 @@ namespace bench::conv2d {
                     }
                 }
             }
-
-            total_timer.print_divided(args.repeat);
 
             if (!success) {
                 std::cout << "Output incorrect!" << std::endl;
@@ -589,7 +575,7 @@ int main(int argc, char** argv) {
         return 0;
     } 
 
-    args.print_arguments();
+    if (args.verbose) args.print_arguments();
 
     bench::conv2d::BenchmarkConv2d benchmark(args);
     bool success = benchmark.test_conv2d();
